@@ -27,7 +27,7 @@ pub fn build(b: *std.Build) !void {
         .root_module = kernel_module,
     });
 
-    kernel.setLinkerScript(targets.getLinkerScript(b, arch));
+    kernel.setLinkerScript(b.path("linker.ld"));
     kernel.lto = .none;
 
     const config = b.addOptions();
@@ -43,7 +43,7 @@ pub fn build(b: *std.Build) !void {
         .name = "kernel",
         .root_module = kernel_module,
     });
-    kernel_check.setLinkerScript(targets.getLinkerScript(b, arch));
+    kernel_check.setLinkerScript(b.path("linker.ld"));
     kernel_check.root_module.addOptions("config", config);
 
     check_step.dependOn(&kernel_check.step);
