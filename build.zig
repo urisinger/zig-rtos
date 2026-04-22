@@ -7,7 +7,7 @@ pub fn build(b: *std.Build) !void {
     const optimize = b.standardOptimizeOption(.{});
 
     // --- 1. Resolve Options ---
-    const arch = b.option(std.Target.Cpu.Arch, "arch", "The target architecture") orelse .riscv64;
+    const arch = b.option(std.Target.Cpu.Arch, "arch", "The target architecture") orelse .riscv32;
     const qemu_debug = b.option(u2, "debug-level", "QEMU debug level (0-3)") orelse 1;
     const qemu_monitor = b.option(bool, "monitor", "Enable QEMU monitor") orelse false;
     const qemu_args = b.option([]const u8, "qemu-args", "Extra QEMU args") orelse "";

@@ -15,6 +15,10 @@ pub fn get(arch: std.Target.Cpu.Arch) std.Target.Query {
             const Feature = std.Target.riscv.Feature;
             disabled_features.addFeature(@intFromEnum(Feature.d));
         },
+        .riscv32 => {
+            const Feature = std.Target.riscv.Feature;
+            disabled_features.addFeature(@intFromEnum(Feature.d));
+        },
         else => std.debug.panic("Unsupported architecture: {s}", .{@tagName(arch)}),
     }
 

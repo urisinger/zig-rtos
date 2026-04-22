@@ -13,16 +13,17 @@ pub fn createCommand(b: *std.Build, opts: QemuOptions) *std.Build.Step.Run {
     const qemu_bin = switch (opts.arch) {
         .aarch64 => "qemu-system-aarch64",
         .riscv64 => "qemu-system-riscv64",
+        .riscv32 => "qemu-system-riscv32",
         else => std.debug.panic("Unsupported architecture for ROM: {s}", .{@tagName(opts.arch)}),
     };
 
     const qemu_cmd = b.addSystemCommand(&.{qemu_bin});
-    
+
     qemu_cmd.addArgs(&.{
-        "-machine", "virt",
-        "-cpu", "max",
-        "-m", "128M",
-        "-serial", "mon:stdio",
+        "-machine",   "virt",
+        "-cpu",       "max",
+        "-m",         "128M",
+        "-serial",    "mon:stdio",
         "-nographic",
     });
 

@@ -3,12 +3,12 @@ ENTRY(_start)
 SECTIONS
 {
     . = 0x80000000;
-    .boot : ALIGN(4) {
+    .boot :  {
         KEEP(*(boot.start))
         *(.boot .boot.*)
     }
 
-    .text : ALIGN(4) {
+    .text : {
         *(.text .text.*)
     }
 
