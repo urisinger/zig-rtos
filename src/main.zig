@@ -23,10 +23,8 @@ var scheduler: Sched = undefined;
 
 const TrapFrame = arch.trap.TrapFrame;
 
-pub export fn handleTimer(tf: *TrapFrame)  noreturn {
-    const new_tf = scheduler.schedule(tf);
-    arch.trap.contextSwitch(new_tf, false);
-    unreachable;
+pub export fn handleTimer(tf: *TrapFrame) *TrapFrame {
+    return scheduler.schedule(tf);
 }
 
 var idle_task_mem: [1024 * 8]u8 align(16) = undefined;
