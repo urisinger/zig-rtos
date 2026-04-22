@@ -24,6 +24,7 @@ var scheduler: Sched = undefined;
 const TrapFrame = arch.trap.TrapFrame;
 
 pub export fn handleTimer(tf: *TrapFrame) *TrapFrame {
+    log.debug("hi", .{});
     return scheduler.schedule(tf);
 }
 
