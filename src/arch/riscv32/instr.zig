@@ -9,7 +9,6 @@ pub inline fn pause() void {
     }
 }
 
-
 pub inline fn enableInterrupts() void {
     asm volatile (
         \\ csrsi mstatus, %[mask]

@@ -5,6 +5,8 @@ pub const QemuOptions = struct {
     rom_install: *std.Build.Step.InstallFile,
     debug_level: u2,
     monitor: bool,
+    graphic: bool,
+    serial: []const u8,
     extra_args: []const u8,
     gdb_server: bool,
 };
@@ -20,12 +22,19 @@ pub fn createCommand(b: *std.Build, opts: QemuOptions) *std.Build.Step.Run {
     const qemu_cmd = b.addSystemCommand(&.{qemu_bin});
 
     qemu_cmd.addArgs(&.{
-        "-machine",   "virt",
-        "-cpu",       "max",
-        "-m",         "128M",
-        "-serial",    "mon:stdio",
-        "-nographic",
+        "-machine",
+        "virt",
+        "-cpu",
+        "max",
+        "-m",
+        "128M",
+        "-serial",
+        opts.serial,
     });
+
+    if (!opts.graphic) {
+        qemu_cmd.addArgs(&.{"-nographic"});
+    }
 
     if (opts.monitor) {
         qemu_cmd.addArgs(&.{ "-monitor", "unix:qemu-monitor.sock,server,nowait" });

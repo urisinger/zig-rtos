@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "custom",
+            "name": "Debug Kernel (CodeLLDB)",
+            "targetCreateCommands": [
+                "target create ${workspaceFolder}/zig-out/bin/kernel"
+            ],
+            "processCreateCommands": [
+                "gdb-remote 1234"
+            ],
+            "preLaunchTask": "debug-qemu"
+        }
+    ]
+}

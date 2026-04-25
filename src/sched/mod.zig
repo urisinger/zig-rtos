@@ -2,34 +2,44 @@ const root = @import("root");
 const std = @import("std");
 const arch = root.arch;
 const trap = arch.trap;
+const utils = root.utils;
+const CircularList = utils.list.CircularList;
 
 const TaskState = enum { Running, Sleeping, Dead };
 pub const Task = struct {
     tcb: TaskControl,
-    state: TaskState,
-    next: *Task,
-    prev: *Task,
+    next: ?*Task,
+    prev: ?*Task,
 
     allocator: ?*std.mem.Allocator,
 
     // base must be alligned to the aligment of Task
-    pub fn init(mem: []align(16) u8, entry: *const fn () void) *Task {
+    pub fn initStatic(mem: []align(16) u8, entry: fn () callconv(.c) void) *Task {
         const task: *Task = @ptrCast(mem.ptr);
-        task.state = .Running;
+        task.tcb.state = .Running;
         task.next = task;
         task.prev = task;
+        const buffer_end = @intFromPtr(mem.ptr) + mem.len;
+        const aligned_sp = buffer_end;
 
-        task.tcb.sp = (@intFromPtr(mem.ptr) + @sizeOf(Task) + mem.len);
+        task.tcb.sp = (aligned_sp - @sizeOf(trap.TrapFrame)) & ~(@as(usize, 15));
 
+        std.log.debug("addr is: 0x{x}", .{@intFromPtr(&entry)});
         const tf = task.tcb.trapFrame();
-        tf.init(@intFromPtr(entry));
+        tf.init(@intFromPtr(&entry));
 
         return task;
+    }
+
+    pub fn init(alloc: *std.mem.Allocator, stack_size: usize, entry: *const fn () void) void {
+        const mem = alloc.alignedAlloc(u8, .@"16", stack_size);
+        Task.initStatic(mem, entry);
     }
 };
 
 const TaskControl = struct {
     sp: usize,
+    state: TaskState,
 
     pub inline fn trapFrame(self: *TaskControl) *trap.TrapFrame {
         return @ptrFromInt(self.sp);
@@ -37,23 +47,27 @@ const TaskControl = struct {
 };
 
 pub const Sched = struct {
-    running: *Task,
+    running: CircularList(Task),
     idle_task: *Task,
     dead_list: ?*Task = null,
 
     pub fn init(idle_task: *Task) Sched {
         return Sched{
-            .running = idle_task,
+            .running = .init(idle_task),
             .idle_task = idle_task,
         };
     }
 
+    pub fn start(self: *Sched) void {
+        const first_task = self.running.current().?;
+        const tf = first_task.tcb.trapFrame();
+        utils.timer.armMs(500);
+
+        arch.trap.restoreContext(tf);
+    }
+
     pub fn addTask(self: *Sched, task: *Task) void {
-        const head = self.running;
-        task.next = head.next;
-        task.prev = head;
-        head.next.prev = task;
-        head.next = task;
+        self.running.insertFirst(task);
     }
 
     pub fn signal(self: *Sched, task: *Task) void {
@@ -76,11 +90,21 @@ pub const Sched = struct {
     }
 
     pub fn schedule(self: *Sched, tf: *trap.TrapFrame) *trap.TrapFrame {
-        self.running.tcb.sp = @intFromPtr(tf);
-        self.running = self.running.next;
+        std.log.debug("hi, 0x{x}", .{@intFromPtr(self.running.current())});
+        self.running.current().?.tcb.sp = @intFromPtr(tf);
 
-        root.timer.armMs(5);
-        return self.running.tcb.trapFrame();
+        const cur = self.running.advance();
+
+        utils.timer.armMs(10);
+
+        return cur.?.tcb.trapFrame();
+    }
+
+    pub export fn yeild(self: *Sched) void {
+        const cur = self.running.current().?;
+        const next = self.running.advance().?;
+
+        arch.trap.yield(&cur.tcb.sp, next.tcb.sp);
     }
 
     pub fn removeTask(self: *Sched, task: *Task) void {

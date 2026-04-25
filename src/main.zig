@@ -1,8 +1,8 @@
 pub const serial = @import("drivers/uart/uart_16550.zig");
 pub const arch = @import("arch/riscv32/mod.zig");
-pub const klog = @import("utils/log.zig");
+pub const utils = @import("utils/mod.zig");
+const klog = utils.klog;
 pub const sched = @import("sched/mod.zig");
-pub const timer = @import("utils/timer.zig");
 pub const Sched = sched.Sched;
 
 pub var stdout = @import("utils/stdout.zig").writer();
@@ -19,42 +19,53 @@ pub const std_options: std.Options = .{
     .log_level = .debug,
 };
 
-var scheduler: Sched = undefined;
+pub var scheduler: Sched = undefined;
 
 const TrapFrame = arch.trap.TrapFrame;
 
-pub export fn handleTimer(tf: *TrapFrame) *TrapFrame {
-    log.debug("hi", .{});
+var idle_task_mem: [1024 * 4]u8 align(16) = undefined;
+
+pub export fn handleTimer(tf: *TrapFrame) callconv(.c) *TrapFrame {
     return scheduler.schedule(tf);
 }
 
-var idle_task_mem: [1024 * 8]u8 align(16) = undefined;
-
+var test_task_mem: [1024 * 4]u8 align(16) = undefined;
 pub export fn kmain(hartid: usize, dtb_ptr: usize) callconv(.c) noreturn {
     _ = hartid;
     _ = dtb_ptr;
     _ = handleTimer;
 
-    arch.trap.init();
-
-    const idle_task = sched.Task.init(&idle_task_mem, idle);
-    scheduler = Sched.init(idle_task);
-
     serial.init(UART0_ADDR);
 
     serial.setBaudRate(0x0002);
+
+    arch.trap.init();
+    const idle_task = sched.Task.initStatic(&idle_task_mem, idle);
+    scheduler = Sched.init(idle_task);
+    const test_task = sched.Task.initStatic(&test_task_mem, testTask);
+    scheduler.addTask(test_task);
 
     log.debug("\n--- NiggaOs Booting ---", .{});
     log.debug("Hardware: QEMU RISC-V 64 (virt)", .{});
     log.debug("Status: Stack initialized, BSS cleared.", .{});
 
-    arch.instr.enableInterrupts();
+    scheduler.start();
 
     while (true) {}
 }
 
-pub fn idle() void {
-    while (true) {}
+pub fn idle() align(4) callconv(.c) void {
+    while (true) {
+        log.debug("i am idle lol", .{});
+        scheduler.yeild();
+    }
+}
+
+pub fn testTask() align(4) callconv(.c) void {
+    while (true) {
+        log.debug("yeilding now: ", .{});
+        scheduler.yeild();
+    }
 }
 
 pub export fn _start() linksection(".boot") callconv(.naked) noreturn {

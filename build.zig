@@ -10,6 +10,8 @@ pub fn build(b: *std.Build) !void {
     const arch = b.option(std.Target.Cpu.Arch, "arch", "The target architecture") orelse .riscv32;
     const qemu_debug = b.option(u2, "debug-level", "QEMU debug level (0-3)") orelse 1;
     const qemu_monitor = b.option(bool, "monitor", "Enable QEMU monitor") orelse false;
+    const graphic = b.option(bool, "graphic", "Enable graphics for qemu") orelse false;
+    const serial = b.option([]const u8, "serial", "Serial output") orelse "mon:stdio";
     const qemu_args = b.option([]const u8, "qemu-args", "Extra QEMU args") orelse "";
 
     const kernel_target = b.resolveTargetQuery(targets.get(arch));
@@ -62,10 +64,13 @@ pub fn build(b: *std.Build) !void {
         .debug_level = qemu_debug,
         .monitor = qemu_monitor,
         .extra_args = qemu_args,
+        .serial = serial,
+        .graphic = graphic,
         .gdb_server = false,
     };
 
     const run_step = b.step("run", "Run the OS in QEMU");
+    run_step.dependOn(b.getInstallStep());
     run_step.dependOn(&qemu.createCommand(b, qemu_opts).step);
 
     const debug_step = b.step("debug", "Run the OS in QEMU with GDB server (-S -s)");
